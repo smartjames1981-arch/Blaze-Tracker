@@ -1,82 +1,131 @@
-let seconds = 0;
-let timerInterval;
-let isRunning = false;
-let score = 0;
-
-// Initial Madison Blaze Roster
-let players = [
-    { name: "Quinn", time: 0, goals: 0, onField: false },
-    { name: "Cole", time: 0, goals: 0, onField: false },
-    { name: "MJ", time: 0, goals: 0, onField: false },
-    { name: "Laiken", time: 0, goals: 0, onField: false },
-    { name: "Micah", time: 0, goals: 0, onField: false },
-    { name: "Caleb", time: 0, goals: 0, onField: false },
-    { name: "Ethan", time: 0, goals: 0, onField: false }
-];
-
-let fieldSlots = { st: null, lw: null, mf: null, rw: null, cb1: null, cb2: null, gk: null };
-
-function renderBench() {
-    const list = document.getElementById('benchList');
-    list.innerHTML = '';
-    
-    // 1. ADD PLAYER BUTTON (New Feature)
-    const addBtn = document.createElement('div');
-    addBtn.className = 'player-card';
-    addBtn.style.border = '1px dashed #777';
-    addBtn.innerHTML = '<span>+ Add Player</span>';
-    addBtn.onclick = addNewPlayer;
-    list.appendChild(addBtn);
-
-    players.forEach((p, index) => {
-        if (!p.onField) {
-            const card = document.createElement('div');
-            card.className = 'player-card';
-            card.innerHTML = `<span>${p.name} ${"⚽".repeat(p.goals)}</span><span class="playing-time">${formatTime(p.time)}</span>`;
-            list.appendChild(card);
-        }
-    });
-}
-
-function addNewPlayer() {
-    const name = prompt("Enter player name:");
-    if (name) {
-        players.push({ name: name, time: 0, goals: 0, onField: false });
-        renderBench();
-    }
-}
-
-// 2. FIELD-FIRST SELECTION (New Feature)
-function handleFieldClick(slotId) {
-    if (fieldSlots[slotId]) {
-        // If someone is there, ask: Goal or Sub Out?
-        const action = prompt(`Type 'G' for Goal or 'S' to Sub Out ${fieldSlots[slotId].name}:`).toUpperCase();
-        if (action === 'G') {
-            fieldSlots[slotId].goals++;
-            score++;
-            document.getElementById('score').innerText = score;
-        } else if (action === 'S') {
-            fieldSlots[slotId].onField = false;
-            fieldSlots[slotId] = null;
-            document.getElementById(`name-${slotId}`).innerText = "EMPTY";
-        }
-    } else {
-        // If slot is empty, show available bench players
-        const available = players.filter(p => !p.onField);
-        if (available.length === 0) return alert("No players on the bench!");
-
-        let menu = "Select player index:\n";
-        available.forEach((p, i) => menu += `${i}: ${p.name}\n`);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blaze Sub Tracker</title>
+    <style>
+        body { background: #121212; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 10px; }
+        #header { display: flex; justify-content: space-between; align-items: center; padding: 10px; max-width: 400px; margin: 0 auto; }
+        #timer { font-size: 24px; color: #FFD700; font-weight: bold; }
+        .btn-start { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-weight: bold; }
         
-        const choice = prompt(menu);
-        if (choice !== null && available[choice]) {
-            const selectedPlayer = available[choice];
-            selectedPlayer.onField = true;
-            fieldSlots[slotId] = selectedPlayer;
-            document.getElementById(`name-${slotId}`).innerText = selectedPlayer.name;
+        #field { 
+            background: #2e7d32; border: 4px solid white; border-radius: 10px;
+            width: 340px; height: 480px; margin: 10px auto; position: relative; 
+        }
+        .half-line { position: absolute; top: 50%; width: 100%; height: 2px; background: rgba(255,255,255,0.5); }
+        .center-circle { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 70px; height: 70px; border: 2px solid rgba(255,255,255,0.5); border-radius: 50%; 
+        }
+
+        .slot {
+            width: 65px; height: 65px; border: 2px solid white; border-radius: 50%;
+            position: absolute; background: #c62828; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; font-size: 11px; cursor: pointer; font-weight: bold;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        /* 7v7 Positions */
+        .st { top: 8%; left: 40.5%; }
+        .lw { top: 25%; left: 8%; }
+        .mf { top: 32%; left: 40.5%; }
+        .rw { top: 25%; right: 8%; }
+        .cb1 { bottom: 22%; left: 18%; }
+        .cb2 { bottom: 22%; right: 18%; }
+        .gk { bottom: 4%; left: 40.5%; }
+
+        #bench { background: #1e1e1e; border-radius: 10px; padding: 15px; margin: 20px auto; max-width: 400px; }
+        .bench-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .player-card { 
+            background: #333; padding: 12px; border-radius: 8px; 
+            display: flex; justify-content: space-between; align-items: center; font-size: 14px;
+        }
+        .playing-time { color: #FFD700; font-size: 12px; }
+        .add-btn { background: #ffd700; color: black; border: none; padding: 5px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+<div id="header">
+    <div style="color: #ef5350; font-weight: bold; font-size: 20px;">RED: <span id="score">0</span></div>
+    <div id="timer">00:00</div>
+    <button class="btn-start" onclick="toggleTimer()" id="startBtn">START</button>
+</div>
+
+<div id="field">
+    <div class="half-line"></div>
+    <div class="center-circle"></div>
+    <div class="slot st" onclick="handleFieldClick('st')">ST<br><span id="name-st">EMPTY</span></div>
+    <div class="slot lw" onclick="handleFieldClick('lw')">LW<br><span id="name-lw">EMPTY</span></div>
+    <div class="slot mf" onclick="handleFieldClick('mf')">MF<br><span id="name-mf">EMPTY</span></div>
+    <div class="slot rw" onclick="handleFieldClick('rw')">RW<br><span id="name-rw">EMPTY</span></div>
+    <div class="slot cb1" onclick="handleFieldClick('cb1')">CB1<br><span id="name-cb1">EMPTY</span></div>
+    <div class="slot cb2" onclick="handleFieldClick('cb2')">CB2<br><span id="name-cb2">EMPTY</span></div>
+    <div class="slot gk" onclick="handleFieldClick('gk')">GK<br><span id="name-gk">EMPTY</span></div>
+</div>
+
+<div id="bench">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <span style="font-weight: bold; letter-spacing: 1px;">BENCH</span>
+        <button class="add-btn" onclick="addNewPlayer()">+ ROSTER</button>
+    </div>
+    <div class="bench-grid" id="benchList"></div>
+</div>
+
+<script>
+    let seconds = 0;
+    let timerInterval;
+    let isRunning = false;
+    let score = 0;
+
+    let players = [
+        { name: "Quinn", time: 0, goals: 0, onField: false },
+        { name: "Cole", time: 0, goals: 0, onField: false },
+        { name: "MJ", time: 0, goals: 0, onField: false },
+        { name: "Laiken", time: 0, goals: 0, onField: false },
+        { name: "Micah", time: 0, goals: 0, onField: false },
+        { name: "Caleb", time: 0, goals: 0, onField: false },
+        { name: "Ethan", time: 0, goals: 0, onField: false }
+    ];
+
+    let fieldSlots = { st: null, lw: null, mf: null, rw: null, cb1: null, cb2: null, gk: null };
+
+    function renderBench() {
+        const list = document.getElementById('benchList');
+        list.innerHTML = '';
+        players.forEach((p) => {
+            if (!p.onField) {
+                const card = document.createElement('div');
+                card.className = 'player-card';
+                card.innerHTML = `<span>${p.name} ${"⚽".repeat(p.goals)}</span><span class="playing-time">${formatTime(p.time)}</span>`;
+                list.appendChild(card);
+            }
+        });
+    }
+
+    function formatTime(s) {
+        const mins = Math.floor(s / 60);
+        const secs = s % 60;
+        return `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
+    }
+
+    function toggleTimer() {
+        isRunning = !isRunning;
+        document.getElementById('startBtn').innerText = isRunning ? "PAUSE" : "START";
+        document.getElementById('startBtn').style.background = isRunning ? "#f44336" : "#4CAF50";
+        if (isRunning) {
+            timerInterval = setInterval(() => {
+                seconds++;
+                document.getElementById('timer').innerText = new Date(seconds * 1000).toISOString().substr(14, 5);
+                players.filter(p => p.onField).forEach(p => p.time++);
+                renderBench();
+            }, 1000);
+        } else {
+            clearInterval(timerInterval);
         }
     }
-    renderBench();
-}
 
-// Update the onclick in your HTML <div> tags to use handleFieldClick('st'), etc.
+    function addNewPlayer() {
+        const name = prompt("Enter new player name:");
+        if (name && name
