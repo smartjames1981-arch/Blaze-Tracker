@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Soccer Sub Tracker</title>
+    <style>
+        body { background: #121212; color: white; font-family: sans-serif; text-align: center; margin: 0; padding: 10px; }
+        #header { display: flex; justify-content: space-between; align-items: center; padding: 10px; }
+        #timer { font-size: 24px; color: #FFD700; font-weight: bold; }
+        .btn-start { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        
+        /* Soccer Field */
+        #field { 
+            background: #2e7d32; border: 2px solid white; border-radius: 10px;
+            width: 340px; height: 450px; margin: 10px auto; position: relative; 
+        }
+        .half-line { position: absolute; top: 50%; width: 100%; height: 2px; background: rgba(255,255,255,0.5); }
+        .center-circle { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 60px; height: 60px; border: 2px solid rgba(255,255,255,0.5); border-radius: 50%; 
+        }
+
+        /* Player Slots */
+        .slot {
+            width: 60px; height: 60px; border: 2px solid white; border-radius: 50%;
+            position: absolute; background: #c62828; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; font-size: 10px; cursor: pointer;
+        }
+        .st { top: 10%; left: 42%; }
+        .lw { top: 30%; left: 10%; }
+        .mf { top: 30%; left: 42%; }
+        .rw { top: 30%; right: 10%; }
+        .cb1 { bottom: 25%; left: 20%; }
+        .cb2 { bottom: 25%; right: 20%; }
+        .gk { bottom: 5%; left: 42%; }
+
+        /* Bench */
+        #bench { background: #1e1e1e; border-radius: 10px; padding: 10px; margin-top: 20px; }
+        .bench-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .player-card { 
+            background: #333; padding: 10px; border-radius: 5px; 
+            display: flex; justify-content: space-between; cursor: pointer; 
+        }
+        .playing-time { color: #FFD700; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+<div id="header">
+    <div style="color: #ef5350; font-weight: bold;">RED: <span id="score">0</span></div>
+    <div id="timer">00:00</div>
+    <button class="btn-start" onclick="toggleTimer()" id="startBtn">START</button>
+</div>
+
+<div id="field">
+    <div class="half-line"></div>
+    <div class="center-circle"></div>
+    <div class="slot st" onclick="subOut('st')">ST<br><span id="name-st">EMPTY</span></div>
+    <div class="slot lw" onclick="subOut('lw')">LW<br><span id="name-lw">EMPTY</span></div>
+    <div class="slot mf" onclick="subOut('mf')">MF<br><span id="name-mf">EMPTY</span></div>
+    <div class="slot rw" onclick="subOut('rw')">RW<br><span id="name-rw">EMPTY</span></div>
+    <div class="slot cb1" onclick="subOut('cb1')">CB1<br><span id="name-cb1">EMPTY</span></div>
+    <div class="slot cb2" onclick="subOut('cb2')">CB2<br><span id="name-cb2">EMPTY</span></div>
+    <div class="slot gk" onclick="subOut('gk')">GK<br><span id="name-gk">EMPTY</span></div>
+</div>
+
+<div id="bench">
+    <div style="text-align: left; padding-bottom: 10px; font-weight: bold;">BENCH</div>
+    <div class="bench-grid" id="benchList"></div>
+</div>
+
+<script>
+    let seconds = 0;
+    let timerInterval;
+    let isRunning = false;
+    let score = 0;
+
+    // Based on your team needs:
+    const players = [
+        { name: "Quinn", time: 0, goals: 0, onField: false },
+        { name: "Cole", time: 0, goals: 0, onField: false },
+        { name: "MJ", time: 0, goals: 0, onField: false },
+        { name: "Laiken", time: 0, goals: 0, onField: false },
+        { name: "Micah", time: 0, goals: 0, onField: false },
+        { name: "Caleb", time: 0, goals: 0, onField: false },
+        { name: "Ethan", time: 0, goals: 0, onField: false }
+    ];
+
+    let fieldSlots = { st: null, lw: null, mf: null, rw: null, cb1: null, cb2: null, gk: null };
+
+    function renderBench() {
+        const list = document.getElementById('benchList');
+        list.innerHTML = '';
+        players.forEach((p, index) => {
+            if (!p.onField) {
+                const card = document.createElement('div');
+                card.className = 'player-card';
+                card.innerHTML = `<span>${p.name} ${"⚽".repeat(p.goals)}</span><span class="playing-time">${formatTime(p.time)}</span>`;
+                card.onclick = () => subIn(index);
+                list.appendChild(card);
+            }
+        });
+    }
+
+    function formatTime(s) {
+        const mins = Math.floor(s / 60);
+        const secs = s % 60;
+        return `${mins}m ${secs}s`;
+    }
+
+    function toggleTimer() {
+        isRunning = !isRunning;
+        document.getElementById('startBtn').innerText = isRunning ? "PAUSE" : "START";
+        if (isRunning) {
+            timerInterval = setInterval(() => {
+                seconds++;
+                document.getElementById('timer').innerText = new Date(seconds * 1000).toISOString().substr(14, 5);
+                players.filter(p => p.onField).forEach(p => p.time++);
+                renderBench();
+            }, 1000);
+        } else {
+            clearInterval(timerInterval);
+        }
+    }
+
+    function subIn(playerIndex) {
+        const slot = prompt("Enter position (st, lw, mf, rw, cb1, cb2, gk):").toLowerCase();
+        if (fieldSlots[slot] === null) {
+            players[playerIndex].onField = true;
+            fieldSlots[slot] = players[playerIndex];
+            document.getElementById(`name-${slot}`).innerText = players[playerIndex].name;
+            renderBench();
+        }
+    }
+
+    function subOut(slot) {
+        if (fieldSlots[slot]) {
+            if (confirm(`Goal for ${fieldSlots[slot].name}?`)) {
+                fieldSlots[slot].goals++;
+                score++;
+                document.getElementById('score').innerText = score;
+            } else {
+                fieldSlots[slot].onField = false;
+                fieldSlots[slot] = null;
+                document.getElementById(`name-${slot}`).innerText = "EMPTY";
+            }
+            renderBench();
+        }
+    }
+
+    renderBench();
+</script>
+</body>
+</html>
