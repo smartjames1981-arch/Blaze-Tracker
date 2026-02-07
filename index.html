@@ -26,7 +26,6 @@
             align-items: center; justify-content: center; font-size: 11px; cursor: pointer; font-weight: bold;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
-        /* 7v7 Positions */
         .st { top: 8%; left: 40.5%; }
         .lw { top: 25%; left: 8%; }
         .mf { top: 32%; left: 40.5%; }
@@ -42,7 +41,7 @@
             display: flex; justify-content: space-between; align-items: center; font-size: 14px;
         }
         .playing-time { color: #FFD700; font-size: 12px; }
-        .add-btn { background: #ffd700; color: black; border: none; padding: 5px 10px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
+        .add-btn { background: #ffd700; color: black; border: none; padding: 8px 12px; border-radius: 4px; font-weight: bold; cursor: pointer; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -60,72 +59,4 @@
     <div class="slot lw" onclick="handleFieldClick('lw')">LW<br><span id="name-lw">EMPTY</span></div>
     <div class="slot mf" onclick="handleFieldClick('mf')">MF<br><span id="name-mf">EMPTY</span></div>
     <div class="slot rw" onclick="handleFieldClick('rw')">RW<br><span id="name-rw">EMPTY</span></div>
-    <div class="slot cb1" onclick="handleFieldClick('cb1')">CB1<br><span id="name-cb1">EMPTY</span></div>
-    <div class="slot cb2" onclick="handleFieldClick('cb2')">CB2<br><span id="name-cb2">EMPTY</span></div>
-    <div class="slot gk" onclick="handleFieldClick('gk')">GK<br><span id="name-gk">EMPTY</span></div>
-</div>
-
-<div id="bench">
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-        <span style="font-weight: bold; letter-spacing: 1px;">BENCH</span>
-        <button class="add-btn" onclick="addNewPlayer()">+ ROSTER</button>
-    </div>
-    <div class="bench-grid" id="benchList"></div>
-</div>
-
-<script>
-    let seconds = 0;
-    let timerInterval;
-    let isRunning = false;
-    let score = 0;
-
-    let players = [
-        { name: "Quinn", time: 0, goals: 0, onField: false },
-        { name: "Cole", time: 0, goals: 0, onField: false },
-        { name: "MJ", time: 0, goals: 0, onField: false },
-        { name: "Laiken", time: 0, goals: 0, onField: false },
-        { name: "Micah", time: 0, goals: 0, onField: false },
-        { name: "Caleb", time: 0, goals: 0, onField: false },
-        { name: "Ethan", time: 0, goals: 0, onField: false }
-    ];
-
-    let fieldSlots = { st: null, lw: null, mf: null, rw: null, cb1: null, cb2: null, gk: null };
-
-    function renderBench() {
-        const list = document.getElementById('benchList');
-        list.innerHTML = '';
-        players.forEach((p) => {
-            if (!p.onField) {
-                const card = document.createElement('div');
-                card.className = 'player-card';
-                card.innerHTML = `<span>${p.name} ${"⚽".repeat(p.goals)}</span><span class="playing-time">${formatTime(p.time)}</span>`;
-                list.appendChild(card);
-            }
-        });
-    }
-
-    function formatTime(s) {
-        const mins = Math.floor(s / 60);
-        const secs = s % 60;
-        return `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
-    }
-
-    function toggleTimer() {
-        isRunning = !isRunning;
-        document.getElementById('startBtn').innerText = isRunning ? "PAUSE" : "START";
-        document.getElementById('startBtn').style.background = isRunning ? "#f44336" : "#4CAF50";
-        if (isRunning) {
-            timerInterval = setInterval(() => {
-                seconds++;
-                document.getElementById('timer').innerText = new Date(seconds * 1000).toISOString().substr(14, 5);
-                players.filter(p => p.onField).forEach(p => p.time++);
-                renderBench();
-            }, 1000);
-        } else {
-            clearInterval(timerInterval);
-        }
-    }
-
-    function addNewPlayer() {
-        const name = prompt("Enter new player name:");
-        if (name && name
+    <div class="slot cb1" onclick="handleFieldClick('cb1')">CB1<br><span id="
